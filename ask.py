@@ -5,12 +5,15 @@ Usage: .venv/bin/python ask.py "偏差的初步评估要在几天内完成？"
        .venv/bin/python ask.py --show-hits "..."   # also print retrieved chunks
 """
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import numpy as np
+import requests
 
 from ingest import embed, get_api_key
 
@@ -18,6 +21,7 @@ ROOT = Path(__file__).parent
 INDEX = ROOT / "index"
 DOCS = ROOT / "docs"
 TOP_K = 6
+CHAT_MODEL = os.environ.get("SOP_RAG_CHAT_MODEL", "gpt-4o-mini")
 
 PROMPT_TEMPLATE = """你是制药公司质量与药物警戒部门的文档检索助手。请只依据下面提供的文档片段回答问题，禁止使用片段之外的知识编造内容。
 
@@ -54,25 +58,61 @@ def build_context(hits):
     return "\n\n".join(parts)
 
 
-def answer(question, hits):
-    prompt = PROMPT_TEMPLATE.format(context=build_context(hits), question=question)
+def answer_openai(prompt, api_key):
+    r = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"model": CHAT_MODEL, "temperature": 0.2,
+              "messages": [{"role": "user", "content": prompt}]},
+        timeout=120,
+    )
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
+
+
+def answer_claude(prompt):
     r = subprocess.run(["claude", "-p"], input=prompt, capture_output=True,
                        text=True, timeout=300)
     if r.returncode != 0:
-        raise SystemExit(f"claude CLI failed: {r.stderr.strip()}")
+        raise RuntimeError(f"claude CLI failed: {r.stderr.strip()}")
     return r.stdout.strip()
 
 
-def source_links(answer_text, hits):
-    """Map each 【doc_no …】 citation in the answer to a clickable file:// link.
+def answer(question, hits):
+    """Answer with the configured LLM backend.
 
-    PDF links get #page=N (from the citation's "p.N", falling back to the
-    first retrieved chunk of that document). One link per unique target.
+    SOP_RAG_LLM=openai|claude forces a backend; default "auto" prefers the
+    OpenAI API (same key as the embeddings, no Claude subscription needed)
+    and falls back to the claude CLI.
+    """
+    prompt = PROMPT_TEMPLATE.format(context=build_context(hits), question=question)
+    backend = os.environ.get("SOP_RAG_LLM", "auto")
+    if backend == "claude":
+        return answer_claude(prompt)
+    if backend == "openai":
+        return answer_openai(prompt, get_api_key())
+    try:
+        key = get_api_key()
+    except SystemExit:
+        key = None
+    if key:
+        return answer_openai(prompt, key)
+    if shutil.which("claude"):
+        return answer_claude(prompt)
+    raise SystemExit("No answering backend: set OPENAI_API_KEY (or .env) "
+                     "or install the claude CLI")
+
+
+def cited_sources(answer_text, hits):
+    """Unique (doc_no, doc_id, page_or_None) for each 【doc_no …】 citation.
+
+    Page numbers come from the citation's "p.N" (falling back to the first
+    retrieved chunk of that document) and are only set for PDFs.
     """
     doc_of = {}
     for _, c in hits:
         doc_of.setdefault(c["doc_no"], c)
-    links, seen = [], set()
+    out, seen = [], set()
     for m in re.finditer(r"【(\S+)([^】]*)】", answer_text):
         c = doc_of.get(m.group(1))
         if c is None:
@@ -80,14 +120,26 @@ def source_links(answer_text, hits):
         path = DOCS / c["doc_id"]
         if not path.exists():
             continue
-        uri = path.as_uri()
+        page = None
         if path.suffix.lower() == ".pdf":
             pm = re.search(r"p\.(\d+)", m.group(2)) or re.search(r"p\.(\d+)", c["locator"])
             if pm:
-                uri += f"#page={pm.group(1)}"
-        if uri not in seen:
-            seen.add(uri)
-            links.append(f"  {c['doc_no']}  {uri}")
+                page = int(pm.group(1))
+        key = (c["doc_id"], page)
+        if key not in seen:
+            seen.add(key)
+            out.append((c["doc_no"], c["doc_id"], page))
+    return out
+
+
+def source_links(answer_text, hits):
+    """Terminal flavor: clickable file:// links (PDF with #page=N)."""
+    links = []
+    for doc_no, doc_id, page in cited_sources(answer_text, hits):
+        uri = (DOCS / doc_id).as_uri()
+        if page:
+            uri += f"#page={page}"
+        links.append(f"  {doc_no}  {uri}")
     return links
 
 

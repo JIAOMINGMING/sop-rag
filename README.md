@@ -56,19 +56,32 @@ retrieval and answering never know or care about the source format.
 
 ## Quick start
 
-Requires Python 3.9+, an [OpenAI API key](https://platform.openai.com/) (for
-embeddings), and [Claude Code](https://claude.com/claude-code) (`claude` CLI,
-for answering).
+Requires Python 3.9+ and one [OpenAI API key](https://platform.openai.com/)
+(used for both embeddings and answering; a $5 top-up lasts a long time —
+indexing the demo corpus costs <$0.01 and each question ~$0.001).
 
 ```bash
 git clone https://github.com/JIAOMINGMING/sop-rag.git && cd sop-rag
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-export OPENAI_API_KEY=sk-...
-
-.venv/bin/python ingest.py                 # index the demo corpus (~185 chunks, <$0.01)
-.venv/bin/python ask.py "偏差的初步评估要在几天内完成？"
-.venv/bin/python ask.py --show-hits "How many hours of annual GMP refresher training?"
+./install.sh        # venv + deps + guided API-key setup + first index
 ```
+
+Then pick your interface:
+
+- **Non-technical users**: double-click `start_web.command` (macOS) or run
+  `.venv/bin/python web.py` — a local web page opens with a search box;
+  answers show citations as clickable links (PDF jumps to the page) plus the
+  retrieved source snippets. Local-only server on `127.0.0.1`; documents
+  never leave the machine except LLM API calls.
+- **Terminal users**:
+  ```bash
+  .venv/bin/python ask.py "偏差的初步评估要在几天内完成？"
+  .venv/bin/python ask.py --show-hits "How many hours of annual GMP refresher training?"
+  ```
+
+Answering uses the OpenAI API by default (`SOP_RAG_CHAT_MODEL`, default
+`gpt-4o-mini`). If you'd rather answer with Claude, install
+[Claude Code](https://claude.com/claude-code) and set `SOP_RAG_LLM=claude` —
+without an OpenAI key the `claude` CLI is used as fallback automatically.
 
 Then replace the demo files in `docs/` with your own documents and re-run
 `ingest.py` — or set up the auto-watcher:

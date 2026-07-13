@@ -26,10 +26,18 @@ def get_api_key():
     import os
     if os.environ.get("OPENAI_API_KEY"):
         return os.environ["OPENAI_API_KEY"]
-    m = re.search(r'^export OPENAI_API_KEY="?([^"\n]+)"?', KEY_FILE.read_text(), re.M)
-    if not m:
-        raise SystemExit(f"OPENAI_API_KEY not found in env or {KEY_FILE}")
-    return m.group(1)
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        m = re.search(r'^(?:export )?OPENAI_API_KEY="?([^"\n]+)"?',
+                      env_file.read_text(), re.M)
+        if m:
+            return m.group(1)
+    if KEY_FILE.exists():
+        m = re.search(r'^export OPENAI_API_KEY="?([^"\n]+)"?', KEY_FILE.read_text(), re.M)
+        if m:
+            return m.group(1)
+    raise SystemExit("OPENAI_API_KEY not found: set the env var, or put "
+                     "OPENAI_API_KEY=sk-... in a .env file next to ingest.py")
 
 
 def embed(texts, api_key):
