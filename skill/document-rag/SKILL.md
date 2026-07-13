@@ -5,6 +5,12 @@ description: Build a cited Q&A (RAG) pipeline over a folder of mixed real-world 
 
 # document-rag — a recipe for cited Q&A over messy document piles
 
+> **Portability note**: the frontmatter above and auto-triggering are Claude
+> Code conventions (`cp -r` this folder into `~/.claude/skills/`). The recipe
+> itself is plain Markdown — Codex CLI users can paste it into `AGENTS.md`,
+> Copilot users into `.github/copilot-instructions.md`, Cursor users into
+> `.cursor/rules/`, or hand it to any capable AI directly.
+
 You are building a small, auditable RAG pipeline for the user's own documents.
 Reference implementation: https://github.com/JIAOMINGMING/sop-rag (read it if
 reachable, but adapt to the user's documents rather than copying blindly).

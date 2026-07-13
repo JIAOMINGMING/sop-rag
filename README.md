@@ -93,6 +93,17 @@ cp -r skill/document-rag ~/.claude/skills/
 
 See [`skill/document-rag/SKILL.md`](skill/document-rag/SKILL.md).
 
+**Not a Claude Code user?** The skill is plain Markdown — only the
+auto-discovery is Claude Code specific. Feed the same recipe to your tool of
+choice:
+
+| Tool | How |
+|------|-----|
+| OpenAI Codex CLI | paste SKILL.md into your project's `AGENTS.md` |
+| GitHub Copilot | put it in `.github/copilot-instructions.md` |
+| Cursor | put it in `.cursor/rules/` |
+| Any chat AI | paste the file and say "build this pipeline over my documents" |
+
 ## Demo corpus (fictional)
 
 10 clean SOP/WI documents of the fictional **Meridian Pharma K.K.** (PV×5,
