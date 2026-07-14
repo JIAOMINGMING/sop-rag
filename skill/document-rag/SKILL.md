@@ -57,7 +57,13 @@ reachable, but adapt to the user's documents rather than copying blindly).
   document identity is searchable.
 - Retrieval: cosine top-6.
 - Answering: `claude -p` CLI (or the user's preferred LLM API), temperature
-  low, answer in the user's language.
+  low. **Answer in the question's language, and force it in code.** A prompt
+  written entirely in one language biases the model to reply in that language
+  even when the user asked in another — detect the question's script
+  (CJK / kana / Latin) and append an explicit directive ("The question is in
+  English — write the ENTIRE answer in English, including the sources line;
+  keep 【…】 markers verbatim"). Give the not-found refusal and the "Sources:"
+  label in each supported language too.
 - Privacy-sensitive users: offer local embeddings (e.g. sentence-transformers)
   + a local LLM; the architecture is unchanged.
 
@@ -90,3 +96,10 @@ reachable, but adapt to the user's documents rather than copying blindly).
   question at a time.
 - If the answering CLI hits a usage limit it may exit in ~2 s with a limit
   message on stdout — surface that error; do not present it as "not found".
+- Cross-lingual retrieval is weak on a single-language corpus: a question in
+  language A over documents written only in language B may not rank the right
+  chunk into top-k, so the answer wrongly refuses. Forcing the answer language
+  (above) does not fix retrieval — tell users to query in the corpus language,
+  or translate/expand the query before embedding, if cross-lingual recall matters.
+- A multilingual UI must clear the question box and previous answer when the
+  language toggle changes — stale text in another language looks broken.
