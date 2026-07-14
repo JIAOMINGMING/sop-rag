@@ -71,6 +71,7 @@ PAGE = """<!doctype html>
     <h1 id="h1"></h1>
     <div class="lang">
       <button id="lang-en" onclick="setLang('en')">EN</button> ·
+      <button id="lang-ja" onclick="setLang('ja')">日本語</button> ·
       <button id="lang-zh" onclick="setLang('zh')">中文</button>
     </div>
   </div>
@@ -93,7 +94,7 @@ PAGE = """<!doctype html>
   </div>
 </div>
 <script>
-// 界面文案：中英双语，可切换（EN / 中文）
+// 界面文案：中日英三语，可切换（EN / 日本語 / 中文）
 const I18N = {
   en: {
     htmlLang: "en", title: "Document Q&A · sop-rag", h1: "📚 Document Q&A",
@@ -104,6 +105,16 @@ const I18N = {
     searching: "Retrieving and generating an answer (~10–20s)…",
     answer: "Answer", sources: "📎 Sources (click to open)",
     hits: "View retrieved source snippets", relevance: "relevance", error: "Error: ",
+  },
+  ja: {
+    htmlLang: "ja", title: "ドキュメントQ&A · sop-rag", h1: "📚 ドキュメントQ&A",
+    sub: "すべての文書を横断して質問し、正確な出典付きで回答 · " +
+         "データは端末から出ません · 一度に一つの質問が最適です",
+    placeholder: "例：OOSの初期調査は何営業日以内に完了する必要がありますか？",
+    ask: "質問", thinking: "考え中…",
+    searching: "検索して回答を生成しています（約10〜20秒）…",
+    answer: "回答", sources: "📎 出典（クリックで開く）",
+    hits: "検索でヒットした原文の抜粋を見る", relevance: "関連度", error: "エラー：",
   },
   zh: {
     htmlLang: "zh", title: "文档问答 · sop-rag", h1: "📚 文档问答",
@@ -116,8 +127,13 @@ const I18N = {
   },
 };
 const STORED = localStorage.getItem("sop_rag_lang");
-let LANG = STORED
-       || ((navigator.language || "en").toLowerCase().startsWith("zh") ? "zh" : "en");
+function detectLang() {
+  const l = (navigator.language || "en").toLowerCase();
+  if (l.startsWith("zh")) return "zh";
+  if (l.startsWith("ja")) return "ja";
+  return "en";
+}
+let LANG = STORED || detectLang();
 if (!I18N[LANG]) LANG = "en";
 
 function t() { return I18N[LANG]; }
@@ -135,7 +151,12 @@ function setLang(lang) {
   document.getElementById("lbl-sources").textContent = x.sources;
   document.getElementById("lbl-hits").textContent = x.hits;
   document.getElementById("lang-en").classList.toggle("on", LANG === "en");
+  document.getElementById("lang-ja").classList.toggle("on", LANG === "ja");
   document.getElementById("lang-zh").classList.toggle("on", LANG === "zh");
+  // 切换语言时清空上一次的提问与回答，避免残留另一种语言的内容
+  document.getElementById("q").value = "";
+  document.getElementById("out").classList.add("hidden");
+  document.getElementById("answer").textContent = "";
 }
 setLang(LANG);
 
