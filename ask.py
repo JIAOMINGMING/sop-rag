@@ -26,11 +26,11 @@ CHAT_MODEL = os.environ.get("SOP_RAG_CHAT_MODEL", "gpt-4o-mini")
 PROMPT_TEMPLATE = """你是制药公司质量与药物警戒部门的文档检索助手。请只依据下面提供的文档片段回答问题，禁止使用片段之外的知识编造内容。
 
 回答要求：
-1. 用中文回答，直接给出结论和关键数字/时限。
+1. 用与问题相同的语言回答（问题是中文就用中文，是英文就用英文），直接给出结论和关键数字/时限。
 2. 每个论点后面用【文档编号 定位】标注出处，定位原样照抄片段头部方括号里的内容，例如【SOP-QA-001 §5.2.1 Timeline】、【SOP-TR-011 §4.2 Annual Refresher (p.2)】、【QA-LOG-2026 Sheet「偏差台账」行15-30】。
 3. 如果答案涉及多份文档，分别说明并都给出出处。
-4. 如果提供的片段不足以回答，明确说"现有文档片段中未找到答案"，不要猜。
-5. 最后加一行"来源:"列出所有引用的 文档编号+定位。
+4. 如果提供的片段不足以回答，明确说明未找到答案（中文说"现有文档片段中未找到答案"，英文说"Not found in the provided documents"），不要猜。
+5. 最后加一行来源清单（中文用"来源:"，英文用"Sources:"）列出所有引用的 文档编号+定位。
 
 === 文档片段 ===
 {context}
@@ -78,6 +78,16 @@ def answer_claude(prompt):
     return r.stdout.strip()
 
 
+def question_is_english(q):
+    """问题基本不含中日文字符、且有若干英文字母 → 视为英文提问。
+
+    仅用于强制作答语言与提问一致（整段 prompt 是中文，模型默认会跟着用中文答）。
+    """
+    cjk = sum(1 for ch in q if "一" <= ch <= "鿿" or "぀" <= ch <= "ヿ")
+    letters = sum(1 for ch in q if ch.isascii() and ch.isalpha())
+    return cjk == 0 and letters >= 3
+
+
 def answer(question, hits):
     """用配置的 LLM 后端作答。
 
@@ -85,6 +95,13 @@ def answer(question, hits):
     （和向量化共用同一个 key，无需 Claude 订阅），没有 key 时回退到 claude 命令行。
     """
     prompt = PROMPT_TEMPLATE.format(context=build_context(hits), question=question)
+    # 明确指令作答语言，避免英文问题被中文 prompt 带成中文回答
+    if question_is_english(question):
+        prompt += ('\n\n[IMPORTANT] The question is in English — write the ENTIRE '
+                   'answer in English, including the final "Sources:" line. Keep the '
+                   '【doc_no locator】 citation markers exactly as they appear.')
+    else:
+        prompt += "\n\n【重要】问题是中文——整段回答必须用中文。"
     backend = os.environ.get("SOP_RAG_LLM", "auto")
     if backend == "claude":
         return answer_claude(prompt)

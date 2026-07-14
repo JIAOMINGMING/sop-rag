@@ -22,25 +22,30 @@ MIME = {
 }
 
 PAGE = """<!doctype html>
-<html lang="zh">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>文档问答 · sop-rag</title>
+<title>Document Q&A · sop-rag</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { font-family: -apple-system, "PingFang SC", "Hiragino Sans", sans-serif;
          background: #f5f6f8; color: #1c2733; padding: 40px 16px; }
   .wrap { max-width: 760px; margin: 0 auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; }
   h1 { font-size: 22px; margin-bottom: 4px; }
   .sub { color: #667; font-size: 13px; margin-bottom: 24px; }
+  .lang { font-size: 12px; color: #667; }
+  .lang button { background: none; border: 0; color: #2563eb; cursor: pointer;
+                 font-size: 12px; padding: 2px 4px; }
+  .lang button.on { font-weight: 700; text-decoration: underline; }
   form { display: flex; gap: 8px; }
   input { flex: 1; font-size: 16px; padding: 12px 14px; border: 1px solid #cdd3da;
           border-radius: 10px; background: #fff; outline: none; }
   input:focus { border-color: #2563eb; }
-  button { font-size: 15px; padding: 12px 22px; border: 0; border-radius: 10px;
+  button.go { font-size: 15px; padding: 12px 22px; border: 0; border-radius: 10px;
            background: #2563eb; color: #fff; cursor: pointer; }
-  button:disabled { background: #9db4e8; cursor: wait; }
+  button.go:disabled { background: #9db4e8; cursor: wait; }
   .card { background: #fff; border: 1px solid #e3e7ec; border-radius: 12px;
           padding: 18px 20px; margin-top: 18px; }
   #answer { white-space: pre-wrap; line-height: 1.75; font-size: 15px; }
@@ -62,26 +67,78 @@ PAGE = """<!doctype html>
 </head>
 <body>
 <div class="wrap">
-  <h1>📚 文档问答</h1>
-  <div class="sub">跨全部文档提问，回答带精确出处 · 数据不离开本机 · 一次问一个问题效果最好</div>
+  <div class="top">
+    <h1 id="h1"></h1>
+    <div class="lang">
+      <button id="lang-en" onclick="setLang('en')">EN</button> ·
+      <button id="lang-zh" onclick="setLang('zh')">中文</button>
+    </div>
+  </div>
+  <div class="sub" id="sub"></div>
   <form id="f">
-    <input id="q" placeholder="例如：偏差的初步评估要在几天内完成？" autofocus autocomplete="off">
-    <button id="go" type="submit">提问</button>
+    <input id="q" autofocus autocomplete="off">
+    <button id="go" class="go" type="submit"></button>
   </form>
   <div id="out" class="card hidden">
-    <div class="lbl">回答</div>
+    <div class="lbl" id="lbl-answer"></div>
     <div id="answer"></div>
     <div id="srcbox" class="hidden">
-      <div class="lbl" style="margin-top:16px">📎 原文（点击打开）</div>
+      <div class="lbl" id="lbl-sources" style="margin-top:16px"></div>
       <div class="src" id="sources"></div>
     </div>
     <details id="hitbox" class="hidden">
-      <summary>查看检索命中的原文片段</summary>
+      <summary id="lbl-hits"></summary>
       <div id="hits"></div>
     </details>
   </div>
 </div>
 <script>
+// 界面文案：中英双语，可切换（EN / 中文）
+const I18N = {
+  en: {
+    htmlLang: "en", title: "Document Q&A · sop-rag", h1: "📚 Document Q&A",
+    sub: "Ask across all your documents, get answers with precise citations · " +
+         "Data stays on your machine · One question at a time works best",
+    placeholder: "e.g. How many business days for the initial OOS investigation?",
+    ask: "Ask", thinking: "Thinking…",
+    searching: "Retrieving and generating an answer (~10–20s)…",
+    answer: "Answer", sources: "📎 Sources (click to open)",
+    hits: "View retrieved source snippets", relevance: "relevance", error: "Error: ",
+  },
+  zh: {
+    htmlLang: "zh", title: "文档问答 · sop-rag", h1: "📚 文档问答",
+    sub: "跨全部文档提问，回答带精确出处 · 数据不离开本机 · 一次问一个问题效果最好",
+    placeholder: "例如：偏差的初步评估要在几天内完成？",
+    ask: "提问", thinking: "思考中…",
+    searching: "正在检索并生成回答（约 10～20 秒）…",
+    answer: "回答", sources: "📎 原文（点击打开）",
+    hits: "查看检索命中的原文片段", relevance: "相关度", error: "出错了：",
+  },
+};
+const STORED = localStorage.getItem("sop_rag_lang");
+let LANG = STORED
+       || ((navigator.language || "en").toLowerCase().startsWith("zh") ? "zh" : "en");
+if (!I18N[LANG]) LANG = "en";
+
+function t() { return I18N[LANG]; }
+function setLang(lang) {
+  LANG = I18N[lang] ? lang : "en";
+  localStorage.setItem("sop_rag_lang", LANG);
+  const x = t();
+  document.documentElement.lang = x.htmlLang;
+  document.title = x.title;
+  document.getElementById("h1").textContent = x.h1;
+  document.getElementById("sub").textContent = x.sub;
+  document.getElementById("q").placeholder = x.placeholder;
+  document.getElementById("go").textContent = x.ask;
+  document.getElementById("lbl-answer").textContent = x.answer;
+  document.getElementById("lbl-sources").textContent = x.sources;
+  document.getElementById("lbl-hits").textContent = x.hits;
+  document.getElementById("lang-en").classList.toggle("on", LANG === "en");
+  document.getElementById("lang-zh").classList.toggle("on", LANG === "zh");
+}
+setLang(LANG);
+
 const f = document.getElementById("f"), q = document.getElementById("q"),
       go = document.getElementById("go"), out = document.getElementById("out"),
       ans = document.getElementById("answer");
@@ -89,9 +146,9 @@ f.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = q.value.trim();
   if (!question) return;
-  go.disabled = true; go.textContent = "思考中…";
+  go.disabled = true; go.textContent = t().thinking;
   out.classList.remove("hidden");
-  ans.textContent = "正在检索并生成回答（约 10～20 秒）…"; ans.classList.remove("err");
+  ans.textContent = t().searching; ans.classList.remove("err");
   document.getElementById("srcbox").classList.add("hidden");
   document.getElementById("hitbox").classList.add("hidden");
   try {
@@ -115,7 +172,7 @@ f.addEventListener("submit", async (e) => {
       const div = document.createElement("div");
       div.className = "hit";
       const b = document.createElement("b");
-      b.textContent = `${h.doc_no} ${h.locator}（相关度 ${h.score.toFixed(3)}）`;
+      b.textContent = `${h.doc_no} ${h.locator}（${t().relevance} ${h.score.toFixed(3)}）`;
       const pre = document.createElement("pre");
       pre.textContent = h.text;
       div.append(b, pre);
@@ -123,9 +180,9 @@ f.addEventListener("submit", async (e) => {
     }
     document.getElementById("hitbox").classList.toggle("hidden", !d.hits.length);
   } catch (err) {
-    ans.textContent = "出错了：" + err.message; ans.classList.add("err");
+    ans.textContent = t().error + err.message; ans.classList.add("err");
   } finally {
-    go.disabled = false; go.textContent = "提问";
+    go.disabled = false; go.textContent = t().ask;
   }
 });
 </script>
