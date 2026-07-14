@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build formal SOP .docx files from markdown sources in src/ into docs/."""
+"""把 src/ 里的 markdown 源稿转成正式 SOP .docx 文件，输出到 docs/。"""
 import re
 import sys
 from pathlib import Path
@@ -25,7 +25,7 @@ def parse_frontmatter(text):
 
 
 def add_runs(paragraph, text):
-    """Render **bold** spans as bold runs."""
+    """把 **加粗** 片段渲染成加粗 run。"""
     pos = 0
     for m in BOLD_RE.finditer(text):
         if m.start() > pos:

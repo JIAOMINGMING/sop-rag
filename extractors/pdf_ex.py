@@ -1,6 +1,6 @@
-"""PDF extractor: numbered-section split when detectable, else sliding window.
+"""PDF 解析器：能识别编号章节就按章节切，否则滑窗切分。
 
-Locators always carry page numbers so citations work either way.
+定位符始终带页码，这样两种情况下出处都能用。
 """
 import fitz
 
@@ -11,7 +11,7 @@ def extract(path):
     pdf = fitz.open(path)
     warnings = []
 
-    # (page_no, line) pairs in reading order
+    # 按阅读顺序的 (页码, 行) 序列
     lines = []
     for page_no, page in enumerate(pdf, start=1):
         for raw in page.get_text().splitlines():
@@ -30,9 +30,9 @@ def extract(path):
 
     if len(headings) >= 3:
         chunks = []
-        section_path = []                        # [(depth, heading)]
+        section_path = []                        # [(层级, 标题)]
         bounds = headings + [len(lines)]
-        # preamble before the first heading
+        # 第一个标题之前的前言
         pre = [ln for _, ln in lines[:headings[0]] if ln != doc_title]
         if pre:
             chunks.append(make_chunk(path, doc_title,
@@ -55,7 +55,7 @@ def extract(path):
                                      f"§{heading} ({pages})", breadcrumb, body))
         return {"chunks": chunks, "mode": "sections", "warnings": warnings}
 
-    # no numbered structure -> sliding window over full text with page tracking
+    # 没有编号结构 → 对全文滑窗切分，同时追踪页码
     offsets, full = [], ""
     for page_no, ln in lines:
         offsets.append((len(full), page_no))

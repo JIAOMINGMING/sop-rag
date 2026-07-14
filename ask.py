@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Ask a question across all documents: retrieve top-k chunks, answer with citations.
+"""跨全部文档提问：检索 top-k 片段，基于命中片段作答并标注出处。
 
-Usage: .venv/bin/python ask.py "偏差的初步评估要在几天内完成？"
-       .venv/bin/python ask.py --show-hits "..."   # also print retrieved chunks
+用法: .venv/bin/python ask.py "偏差的初步评估要在几天内完成？"
+      .venv/bin/python ask.py --show-hits "..."   # 同时打印检索命中的片段
 """
 import json
 import os
@@ -79,11 +79,10 @@ def answer_claude(prompt):
 
 
 def answer(question, hits):
-    """Answer with the configured LLM backend.
+    """用配置的 LLM 后端作答。
 
-    SOP_RAG_LLM=openai|claude forces a backend; default "auto" prefers the
-    OpenAI API (same key as the embeddings, no Claude subscription needed)
-    and falls back to the claude CLI.
+    SOP_RAG_LLM=openai|claude 可强制指定后端；默认 "auto" 优先用 OpenAI API
+    （和向量化共用同一个 key，无需 Claude 订阅），没有 key 时回退到 claude 命令行。
     """
     prompt = PROMPT_TEMPLATE.format(context=build_context(hits), question=question)
     backend = os.environ.get("SOP_RAG_LLM", "auto")
@@ -104,10 +103,9 @@ def answer(question, hits):
 
 
 def cited_sources(answer_text, hits):
-    """Unique (doc_no, doc_id, page_or_None) for each 【doc_no …】 citation.
+    """为每个【文档编号 …】出处返回去重后的 (doc_no, doc_id, 页码或None)。
 
-    Page numbers come from the citation's "p.N" (falling back to the first
-    retrieved chunk of that document) and are only set for PDFs.
+    页码取自出处里的 "p.N"（取不到则回退到该文档第一个命中片段），且只对 PDF 设置。
     """
     doc_of = {}
     for _, c in hits:
@@ -133,7 +131,7 @@ def cited_sources(answer_text, hits):
 
 
 def source_links(answer_text, hits):
-    """Terminal flavor: clickable file:// links (PDF with #page=N)."""
+    """终端版：可点击的 file:// 链接（PDF 带 #page=N）。"""
     links = []
     for doc_no, doc_id, page in cited_sources(answer_text, hits):
         uri = (DOCS / doc_id).as_uri()

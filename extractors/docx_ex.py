@@ -1,4 +1,4 @@
-"""Word extractor: heading styles when present, layout heuristics otherwise."""
+"""Word 解析器：有 Heading 样式就按样式切，没有则用排版启发式识别标题。"""
 import re
 from pathlib import Path
 
@@ -32,7 +32,7 @@ def is_bold_para(p):
 
 
 def heuristic_heading_level(p):
-    """Return heading level for unstyled docs, or None if body text."""
+    """无样式文档：返回标题层级，正文则返回 None。"""
     text = p.text.strip()
     if not text or len(text) > 80:
         return None
@@ -60,7 +60,7 @@ def extract(path, display_path=None):
         buf.clear()
         if not text.strip():
             return
-        if not section_path:                     # preamble before first heading
+        if not section_path:                     # 第一个标题之前的前言
             section_path.append((1, "(前言)"))
         section = section_path[-1][1]
         breadcrumb = " > ".join(h for _, h in section_path)
@@ -96,7 +96,7 @@ def extract(path, display_path=None):
         lvl = heading_level(el)
         if lvl is not None:
             if not doc_title:
-                doc_title = text                  # first heading doubles as title
+                doc_title = text                  # 第一个标题兼作文档标题
             flush()
             while section_path and section_path[-1][0] >= lvl:
                 section_path.pop()
@@ -105,10 +105,10 @@ def extract(path, display_path=None):
             buf.append(text)
     flush()
 
-    if not chunks:                                # no text at all -> give up cleanly
+    if not chunks:                                # 完全没有文本 → 干净地放弃
         warnings.append("未提取到任何文本")
     elif mode == "heuristic" and len(chunks) == 1:
-        mode = "sliding-window"                   # heuristics found no structure
+        mode = "sliding-window"                   # 启发式没找到任何结构
         full = chunks[0]["text"]
         chunks = [make_chunk(display_path, doc_title, f"块{i+1}", None, seg)
                   for i, (_, seg) in enumerate(sliding_window(full))]

@@ -1,6 +1,6 @@
-"""Excel extractor: per-sheet row blocks, header row carried into every chunk.
+"""Excel 解析器：每个 sheet 按行分块，表头行随每个 chunk 一起携带。
 
-Locator: Sheet「名称」行N-M (1-based, matching what the user sees in Excel).
+定位符：Sheet「名称」行N-M（从 1 开始，和用户在 Excel 里看到的一致）。
 """
 from openpyxl import load_workbook
 
@@ -26,7 +26,7 @@ def extract(path):
         header_idx, header = rows[0]
         header_line = row_text(header)
         data = rows[1:]
-        if not data:                              # header-only sheet: keep as one chunk
+        if not data:                              # 只有表头的 sheet：整体作一个 chunk
             chunks.append(make_chunk(path, doc_title,
                                      f"Sheet「{ws.title}」行{header_idx}",
                                      f"Sheet {ws.title}", header_line))

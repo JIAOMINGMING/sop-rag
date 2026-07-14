@@ -1,4 +1,4 @@
-"""Markdown / plain-text extractor: heading-aware for md, numbered lines for txt."""
+"""Markdown / 纯文本解析器：md 按标题切，txt 按编号行切。"""
 import re
 
 from . import HEADING_NUM_RE, make_chunk, sliding_window

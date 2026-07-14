@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Local web UI: browser-based Q&A over the indexed documents.
+"""本地网页界面：在浏览器里对已入库文档提问。
 
-Start:  .venv/bin/python web.py     (or double-click start_web.command)
-Opens http://127.0.0.1:8765 automatically. Local only — nothing is exposed
-to the network; documents never leave the machine except LLM API calls.
+启动:  .venv/bin/python web.py     （或双击 start_web.command）
+自动打开 http://127.0.0.1:8765。仅限本机——不对外暴露；
+除 LLM API 调用外，文档不离开本机。
 """
 import json
 import threading
@@ -171,7 +171,7 @@ class Handler(BaseHTTPRequestHandler):
             ctype = MIME.get(f.suffix.lower(), "application/octet-stream")
             extra = {}
             if ctype == "application/octet-stream":
-                # Word/Excel: the browser downloads the file; open it locally
+                # Word/Excel：浏览器下载文件，在本地打开
                 extra["Content-Disposition"] = \
                     f"attachment; filename*=UTF-8''{quote(f.name)}"
             return self._send(200, f.read_bytes(), ctype, extra)

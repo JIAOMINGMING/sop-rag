@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Ingest docs/* (docx/doc/pdf/xlsx/md/txt) -> unified chunks -> OpenAI embeddings.
+"""入库：docs/*（docx/doc/pdf/xlsx/md/txt）→ 统一 chunk → OpenAI 向量。
 
-Incremental: unchanged files (by content hash) reuse their cached vectors.
-Prints a per-file parse-quality report so bad files never fail silently.
+增量：内容 hash 未变的文件直接复用缓存向量。
+每份文件打印一份解析质量报告，脏文件不会静默失败。
 """
 import hashlib
 import json
@@ -64,7 +64,7 @@ def embed_input(c):
 
 
 def load_previous():
-    """Return (manifest, chunks_by_doc_id, vecs_by_doc_id) from the last run."""
+    """返回上次运行的 (manifest, 按doc_id分组的chunks, 按doc_id分组的向量)。"""
     manifest_f, chunks_f, vecs_f = (INDEX / "manifest.json",
                                     INDEX / "chunks.json", INDEX / "embeddings.npy")
     if not (manifest_f.exists() and chunks_f.exists() and vecs_f.exists()):
@@ -73,7 +73,7 @@ def load_previous():
     chunks = json.loads(chunks_f.read_text(encoding="utf-8"))
     vecs = np.load(vecs_f)
     if len(chunks) != len(vecs) or (chunks and "doc_id" not in chunks[0]):
-        return {}, {}, {}                        # stale/legacy index -> full rebuild
+        return {}, {}, {}                        # 索引过期/旧版格式 → 整体重建
     by_doc_c, by_doc_v = {}, {}
     for c, v in zip(chunks, vecs):
         by_doc_c.setdefault(c["doc_id"], []).append(c)
@@ -103,14 +103,14 @@ def main():
             continue
         try:
             result = extract(path)
-        except Exception as e:                    # one bad file must not kill the run
+        except Exception as e:                    # 单个坏文件不能中断整轮
             report.append((path.name, "FAILED", 0, [f"{type(e).__name__}: {e}"]))
             continue
         chunks = result["chunks"]
         report.append((path.name, result["mode"], len(chunks), result["warnings"]))
         for c in chunks:
             all_chunks.append(c)
-            all_vecs.append(None)                 # placeholder, filled after embed
+            all_vecs.append(None)                 # 占位，向量化后回填
             new_chunks.append((len(all_chunks) - 1, c))
 
     if new_chunks:

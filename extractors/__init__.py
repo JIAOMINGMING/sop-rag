@@ -1,13 +1,13 @@
-"""Format-adaptive document extractors.
+"""按格式自适应的文档解析器。
 
-Every extractor returns the same result shape:
+每个解析器都返回相同结构的结果：
     {
       "chunks": [{doc_id, doc_no, doc_title, locator, breadcrumb, text}, ...],
-      "mode":   how the file was parsed ("styles" / "heuristic" / "sections" /
-                "sliding-window" / "sheet-rows" / ...),
+      "mode":   文件的解析方式（"styles" / "heuristic" / "sections" /
+                "sliding-window" / "sheet-rows" / ...）,
       "warnings": [str, ...],
     }
-so retrieval and answering never need to know the source format.
+这样检索和作答层完全不需要知道源文件的格式。
 """
 import re
 import shutil
@@ -21,7 +21,7 @@ SUPPORTED = {".docx", ".doc", ".pdf", ".xlsx", ".xlsm", ".md", ".txt"}
 
 
 def doc_no_of(path):
-    """`SOP-QC-010_OOS调查.docx` -> `SOP-QC-010`; plain stems stay as-is."""
+    """`SOP-QC-010_OOS调查.docx` → `SOP-QC-010`；无下划线的文件名原样保留。"""
     return Path(path).stem.split("_")[0]
 
 
@@ -37,11 +37,11 @@ def make_chunk(path, doc_title, locator, breadcrumb, text):
 
 
 def sliding_window(text, size=1200, overlap=200):
-    """Fallback chunking when no structure is detectable."""
+    """识别不出结构时的兜底切分。"""
     out, start = [], 0
     while start < len(text):
         end = min(start + size, len(text))
-        if end < len(text):                       # try to break at a newline
+        if end < len(text):                       # 尽量在换行处断开
             nl = text.rfind("\n", start + size // 2, end)
             if nl > start:
                 end = nl
@@ -53,7 +53,7 @@ def sliding_window(text, size=1200, overlap=200):
 
 
 def convert_doc_to_docx(path):
-    """Legacy .doc -> temp .docx via LibreOffice; None if unavailable."""
+    """老 .doc → 经 LibreOffice 转成临时 .docx；不可用时返回 None。"""
     soffice = shutil.which("soffice") or shutil.which("libreoffice")
     if not soffice:
         return None
@@ -66,7 +66,7 @@ def convert_doc_to_docx(path):
 
 
 def extract(path):
-    """Dispatch by extension. Raises ValueError for unsupported types."""
+    """按扩展名分发。遇到不支持的类型抛 ValueError。"""
     from . import docx_ex, pdf_ex, xlsx_ex, text_ex
     path = Path(path)
     suffix = path.suffix.lower()
@@ -86,4 +86,4 @@ def extract(path):
         return xlsx_ex.extract(path)
     if suffix in (".md", ".txt"):
         return text_ex.extract(path)
-    raise ValueError(f"unsupported file type: {path.name}")
+    raise ValueError(f"不支持的文件类型: {path.name}")

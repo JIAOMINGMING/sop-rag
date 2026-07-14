@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create deliberately-messy test documents in docs/ to exercise the extractors:
-- a Chinese .docx with NO heading styles (bold paragraphs as headings)
-- a .pdf with numbered sections
-- a deviation-log .xlsx
+"""在 docs/ 里生成故意做脏的测试文档，用来检验各解析器：
+- 一份没有任何 Heading 样式的中文 .docx（用加粗段落当标题）
+- 一份带编号章节的 .pdf
+- 一份偏差台账 .xlsx
 """
 from pathlib import Path
 
@@ -14,7 +14,7 @@ DOCS = Path(__file__).parent / "docs"
 
 
 def make_dirty_docx():
-    """Simulates a real-world SOP written without Word heading styles."""
+    """模拟一份没用 Word 标题样式写成的真实 SOP。"""
     doc = Document()
 
     def bold_line(text):
@@ -55,7 +55,7 @@ def make_dirty_docx():
 
 
 def make_pdf():
-    """A training-management SOP as a native PDF with numbered sections."""
+    """一份带编号章节的原生 PDF 培训管理 SOP。"""
     lines = [
         "SOP-TR-011 GxP Training Management",
         "Meridian Pharma K.K.   Version 1.3   Effective Date: 2026-06-01",
@@ -124,7 +124,7 @@ def make_pdf():
 
 
 def make_xlsx():
-    """2026 deviation log."""
+    """2026 年偏差台账。"""
     wb = Workbook()
     ws = wb.active
     ws.title = "偏差台账2026"
